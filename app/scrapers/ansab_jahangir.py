@@ -2,35 +2,13 @@ import re, json
 from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-def _playwright_get(url, proxy="", headers=None):
-    launch_kwargs = {"headless": True}
-    if proxy:
-        launch_kwargs["proxy"] = {"server": proxy}
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(**launch_kwargs)
-    context = browser.new_context(extra_http_headers=headers or {})
-    page = context.new_page()
-    page.goto(url, timeout=60000, wait_until="networkidle")
-    try:
-        page.wait_for_selector('a[href*="/product"], a[href*="/products/"], a:has-text("View Detail"), h1', timeout=8000)
-    except Exception:
-        pass
-    html = page.content()
-    browser.close()
-    pw.stop()
-    return html
-
-def _get_html(url, proxy="", headers=None):
-    try:
-        return _playwright_get(url, proxy=proxy, headers=headers or {})
-    except Exception:
-        r = requests.get(url, headers=HEADERS, timeout=45)
-        r.raise_for_status()
-        return r.text
+def _get_html(url, headers=None):
+    r = requests.get(url, headers=headers or HEADERS, timeout=45)
+    r.raise_for_status()
+    return r.text
 
 def _abs(base, href):
     if not href: return ""
@@ -189,10 +167,13 @@ def scrape_product_ansab(url: str):
 
     images = _filter_product_images(url, s)
 
-    product_details = _grab_text_after_heading(product_scope, re.compile(r"^Product Details$", re.I))
-    delivery = _grab_text_after_heading(product_scope, re.compile(r"^DELIVERY\s*TIME$", re.I))
-    care = _grab_text_after_heading(product_scope, re.compile(r"^Care Instructions$", re.I))
-    disclaimer = _grab_text_after_heading(product_scope, re.compile(r"^Disclaimer$", re.I))
+    def grab_section(label_regex):
+        return _grab_text_after_heading(product_scope, label_regex)
+
+    product_details = grab_section(re.compile(r"^Product Details$", re.I))
+    delivery = grab_section(re.compile(r"^DELIVERY\s*TIME$", re.I))
+    care = grab_section(re.compile(r"^Care Instructions$", re.I))
+    disclaimer = grab_section(re.compile(r"^Disclaimer$", re.I))
 
     html_parts = []
     if attrs.get("Design Code"): html_parts.append(f"<p><strong>Design Code:</strong> {attrs['Design Code']}</p>")

@@ -15,6 +15,16 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 env = Environment(loader=FileSystemLoader("app/templates"), autoescape=select_autoescape())
 
+# Health endpoints for Render
+@app.get("/healthz")
+@app.head("/healthz")
+def healthz():
+    return HTMLResponse("", status_code=200)
+
+@app.head("/")
+def head_root():
+    return HTMLResponse("", status_code=200)
+
 def collect_with_fallback(url: str, limit: int):
     which = "ansab" if "ansabjahangirstudio.com" in urlparse(url).netloc else "generic"
     if which == "ansab":
@@ -23,6 +33,8 @@ def collect_with_fallback(url: str, limit: int):
         urls = scrape_collection_generic(url)
     if limit and len(urls) > limit:
         urls = urls[:limit]
+    if not urls:
+        urls = [url]
     return urls, which
 
 def scrape_product_any(url: str, which: str):
@@ -67,9 +79,6 @@ def generate(
     meta_work_details: bool = Form(True),
 ):
     urls, which = collect_with_fallback(collection_url, int(limit_products))
-    if not urls:
-        urls = [collection_url]
-        which = "ansab" if "ansabjahangirstudio.com" in urlparse(collection_url).netloc else "generic"
 
     scraped = []
     for u in urls:

@@ -70,7 +70,7 @@ def _angle_key(u: str) -> str:
     stem = re.sub(r"[-_](?:\d{3,4}|\d{2,4}x\d{2,4}|[12]x|small|medium|large|thumbnail|thumb|tiny|mini|micro)$", "", stem)
     stem = re.sub(r"_(?:\d{2,4})x(?:\d{2,4})$", "", stem)
     stem = re.sub(r"[-_]+", "_", stem).strip("_-")
-    # Ansab hint: if starts with a long numeric id, use it as the angle key
+    # If starts with a long numeric id, treat it as angle id (Ansab pattern)
     m = re.match(r"^(\d{4,})[_-]", stem)
     if m:
         return m.group(1) + ext
